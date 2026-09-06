@@ -1,0 +1,58 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: book_reviews_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-book_reviews}
+      MYSQL_USER: ${MYSQL_USER:-bookreviews}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - book_reviews_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
+
+  php:
+    image: ${PHP_IMAGE:-ktistes/book-reviews-php:latest}
+    container_name: book_reviews_php
+    restart: unless-stopped
+    environment:
+      - DB_HOST=db
+      - DB_NAME=${MYSQL_DATABASE:-book_reviews}
+      - DB_USER=${MYSQL_USER:-bookreviews}
+      - DB_PASS=${MYSQL_PASSWORD}
+      - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - CONTACT_TO_EMAIL=${CONTACT_TO_EMAIL}
+    networks:
+      - book_reviews_network
+    depends_on:
+      db:
+        condition: service_healthy
+
+  nginx:
+    image: ${NGINX_IMAGE:-ktistes/book-reviews-nginx:latest}
+    container_name: book_reviews_nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8089}:80"
+    networks:
+      - book_reviews_network
+    depends_on:
+      - php
+
+volumes:
+  db_data:
+
+networks:
+  book_reviews_network:
+    driver: bridge
