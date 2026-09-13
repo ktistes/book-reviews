@@ -1,0 +1,36 @@
+services:
+  php:
+    image: ${PHP_IMAGE:-ktistes/book-reviews-php-sqlite:latest}
+    container_name: book_reviews_sqlite_php
+    restart: unless-stopped
+    environment:
+      - DB_PATH=/var/www/data/book_reviews.sqlite
+      - GOOGLE_BOOKS_API_KEY=${GOOGLE_BOOKS_API_KEY}
+      - APP_URL=${APP_URL}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASSWORD=${SMTP_PASSWORD}
+      - CONTACT_TO_EMAIL=${CONTACT_TO_EMAIL}
+    volumes:
+      - db_data:/var/www/data
+    networks:
+      - book_reviews_sqlite_network
+
+  nginx:
+    image: ${NGINX_IMAGE:-ktistes/book-reviews-nginx:latest}
+    container_name: book_reviews_sqlite_nginx
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-8088}:80"
+    networks:
+      - book_reviews_sqlite_network
+    depends_on:
+      - php
+
+volumes:
+  db_data:
+
+networks:
+  book_reviews_sqlite_network:
+    driver: bridge
